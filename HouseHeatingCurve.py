@@ -1,17 +1,28 @@
 ##############################################################################################################
 # HouseHeatingCurve.py 
-# Last Update: December 13th 2019
+# Last Update: December 14th 2019
 # V0.1 : Initial Creation
+# V0.2 : Update comments, added scaling on placement of text labels in the plot.
 ##############################################################################################################
 # Script queries Heating (kWh) and Temperature (oC) data from Domoticz stored in sensors with ids 
 # OutDoorTemperatureSensorID and HeatingEnergySensorID and analyses the data from DateStartAnalyses till 
 # DateEndAnalyses.
 #
+# The OutdoorTemperatureSensor is a standard Domoticz temperature sensor, the HeatingEnergySensor is a sensor
+# type General, subtype Custom Sensor, I use a Kamstrup302 to accurately measure the energy going into my 
+# heating system. 
+# When you don't have such a device, but do have a smart Gas meter, that one can also be used by setting
+# the UseGasDataForHeatingEnergyEstimation to True. In that case GasSensorID will be used to get the data
+# and the Energy is estimated by deducting the amount of Gas you use for Warm Water and Cooking indicated by 
+# CubicMetersGasADayForWarmWaterAndCooking and multiply this with EnergyPerCubicMeterGas. 
+# Default setting of 31.65/3.6 equals the energy content of Natural Gas used in Holland, assuming the heater
+# is not finely tuned to make use of additional energy from condensation of the water vapor.
+#
 # It will calculate the required heating power at OutsideTemperatureOfInterest when taking into account a 
 # maximum number of hours it can run a day defined by HoursForHeatingADay.
 #
 # It will also calculate the required maximum power of additional heating which will be required not to have 
-# the house cooling down based on historic data since 1953 from Volkel Airbase KNMI weather station.
+# the house cooling down based on historic data since 1951 from Volkel Airbase KNMI weather station.
 # Based on this it will give an estimate on the amount of energy spend this way in kWh per year and the cost of
 # it based on the CostPerkWh.
 #
@@ -34,34 +45,40 @@ import pylab
 from scipy.optimize import curve_fit
 
 ##############################################################################################################
-# Definitions
+# Definitions                                                                                                #
 ##############################################################################################################
 
-################
-# Config Start #
-################
+##############################################################################################################
+# Config Start 												     #
+##############################################################################################################
 DateStartAnalyses=datetime.date(2019,9,12)
 DateEndAnalyses=datetime.datetime.now().date()
 
-#The outside temperature of interest is what is used to calculate the required Heating Capacity.
-OutsideTemperatureOfInterest=float(-5.0)
+# Indicate to use energy data from Domoticz in kWh, or use Gas data and convert that to kWh
+UseGasDataForHeatingEnergyEstimation = False
+EnergyPerCubicMeterGas = float(31.65/3.6)
+CubicMetersGasADayForWarmWaterAndCooking = float(8/30)
 
-#Hours Per Day for Heating is defined such that some time can be reserved to heatup a boiler of warm water
-#or to indicate for example not to heat during the night.
+# The outside temperature of interest is what is used to calculate the required Heating Capacity.
+OutsideTemperatureOfInterest=float(-7.0)
+
+# Hours Per Day for Heating is defined such that some time can be reserved to heatup a boiler of warm water
+# or to indicate for example not to heat during the night.
 HoursForHeatingADay = float(22.0)
 
-#Price per kWh for the alternative energy to calculate the variabel cost of additional heating.
-CostPerkWh=0.227
+# Price per kWh for the alternative energy to calculate the variabel cost of additional heating.
+CostPerkWh = float(0.227)
 
 #Sensor IDx from Domoticz
 OutDoorTemperatureSensorID="20"
 HeatingEnergySensorID="102"
+GasSensorID="53"
 
 # Domoticz Host IP
 DomoticzHostAndPort="https://192.168.225.86:443/"
-##############
-# Config End #
-##############
+##############################################################################################################
+# Config End                                                                                                 #
+##############################################################################################################
 
 
 #Domoticz URL constructs to get data
@@ -69,10 +86,13 @@ QueryPreFix=DomoticzHostAndPort+"json.htm?type=graph&sensor="
 QueryPostFix="&range=year&method=1"
 Percentage="Percentage&idx="
 Temperature="temp&idx="
+Counter="counter&idx="
 
 #Domoticz URLs
 OutdoorTemperatureDataURL=QueryPreFix+Temperature+OutDoorTemperatureSensorID+QueryPostFix
 HeatingEnergyDataURL=QueryPreFix+Percentage+HeatingEnergySensorID+QueryPostFix
+GasUsageDataURL=QueryPreFix+Counter+GasSensorID+QueryPostFix
+
 
 #Creating a context to indicate to urllib2 that we don't want SSL verification
 #in case the domoticz setup does not have a valid CERT certificate.
@@ -163,7 +183,7 @@ def GetOutdoorTemp():
 		  ReturnList.append(item)
    except (urllib2.HTTPError, urllib2.URLError) as fout:
       print("Error: "+str(fout)+" URL: "+OutdoorTemperatureDataURL)
-   #print('<GetOutdoorTemp:'+TemperatureList.__str__())
+   #print('<GetOutdoorTemp:'+ReturnList.__str__())
    return(ReturnList)
 
 def GetHeatingEnergy():
@@ -182,8 +202,28 @@ def GetHeatingEnergy():
 		  ReturnList.append(item)
    except (urllib2.HTTPError, urllib2.URLError) as fout:
       print("Error: "+str(fout)+" URL: "+HeatingEnergyDataURL)
-   #print('<GetHeatingEnergy:'+HeatingEnergyList.__str__())
+   #print('<GetHeatingEnergy:'+ReturnList.__str__())
    return(ReturnList)
+
+def GetHeatingEnergyFromGasUsage():
+   #print('>GetHeatingEnergyFromGasUsage')
+   ReturnList=[]
+   try:
+      Page=urllib2.urlopen(GasUsageDataURL, context=UnverifiedContext)
+      DataString=Page.read()
+      JsonData=json.loads(DataString)
+      HeatingEnergyList=JsonData['result']
+      #Filter out only the items with proper values
+      for item in HeatingEnergyList:
+         if 'd' in item:
+	    if DataInAnalysesWindow(item['d']):
+	       if 'v' in item:
+		  ReturnList.append(item)
+   except (urllib2.HTTPError, urllib2.URLError) as fout:
+      print("Error: "+str(fout)+" URL: "+GasUsageDataURL)
+   #print('<GetHeatingEnergyFromGasUsage:'+ReturnList.__str__())
+   return(ReturnList)
+
 
 def CreateDictionaryOfData (OutdoorData, HeatingEnergyData):
    OutputDict=collections.OrderedDict()
@@ -196,38 +236,49 @@ def CreateDictionaryOfData (OutdoorData, HeatingEnergyData):
 	 ValueList = []
 	 ValueList.append(ValueDict)
 	 OutputDict[item['d']]=ValueList
-   for item in HeatingEnergyData:
-      ValueDict = dict()
-      ValueDict['Energy']=(float(item['v_max'])-float(item['v_min'])).__str__()
-      if item['d'] in OutputDict:
-	 OutputDict[item['d']].append(ValueDict)
-      else:
-	 ValueList = []
-	 ValueList.append(ValueDict)
-	 OutputDict[item['d']]=ValueList
+   if (UseGasDataForHeatingEnergyEstimation):
+      for item in HeatingEnergyData:
+	 ValueDict = dict()
+	 ValueDict['Energy']=((float(item['v'])-CubicMetersGasADayForWarmWaterAndCooking)*EnergyPerCubicMeterGas).__str__()
+	 if item['d'] in OutputDict:
+	    OutputDict[item['d']].append(ValueDict)
+	 else:
+	    ValueList = []
+	    ValueList.append(ValueDict)
+	    OutputDict[item['d']]=ValueList
+   else:
+      for item in HeatingEnergyData:
+	 ValueDict = dict()
+	 ValueDict['Energy']=(float(item['v_max'])-float(item['v_min'])).__str__()
+	 if item['d'] in OutputDict:
+	    OutputDict[item['d']].append(ValueDict)
+	 else:
+	    ValueList = []
+	    ValueList.append(ValueDict)
+	    OutputDict[item['d']]=ValueList
    return(OutputDict)
 
 def GetDataListsFromDictionary (Measurements):
    #Initialize Previous Values, to be used when entry is missing.
-   HeatingEnergySamples=[]
+   HeatingPowerSamples=[]
    OutdoorTempSamples=[]
    PreviousOutdoorTemperature = 0.0
-   PreviousHeatingEnergy = 0.0
+   PreviousHeatingPower = 0.0
    for Date, ValueList in Measurements.iteritems():
       for Value in ValueList:
+	 if 'Energy' in Value:
+	    PreviousHeatingPower = float(Value['Energy'])/HoursForHeatingADay
 	 if 'OutdoorTemperature' in Value:
 	    PreviousOutdoorTemperature = float(Value['OutdoorTemperature'])
-	 if 'Energy' in Value:
-	    PreviousHeatingEnergy = float(Value['Energy'])/HoursForHeatingADay
-      HeatingEnergySamples.append(PreviousHeatingEnergy)
+      HeatingPowerSamples.append(PreviousHeatingPower)
       OutdoorTempSamples.append(PreviousOutdoorTemperature)
-   return(OutdoorTempSamples,HeatingEnergySamples)
+   return(OutdoorTempSamples, HeatingPowerSamples)
    
 def FitEnergyVsTOutsideFunction(OutdoorTempSamples, Gain, Offset):
    return(OutdoorTempSamples*Gain + Offset)
 
-def FitHeatingAndTemperatureData(OutdoorTempSamples, HeatingEnergySamples):
-   FitParams = curve_fit(FitEnergyVsTOutsideFunction, OutdoorTempSamples, HeatingEnergySamples)
+def FitHeatingAndTemperatureData(OutdoorTempSamples, HeatingPowerSamples):
+   FitParams = curve_fit(FitEnergyVsTOutsideFunction, OutdoorTempSamples, HeatingPowerSamples)
    HeatingPowerGain=FitParams[0][0]
    HeatingPowerOffset=FitParams[0][1]
    #corrrelation
@@ -235,7 +286,7 @@ def FitHeatingAndTemperatureData(OutdoorTempSamples, HeatingEnergySamples):
    for temperature in OutdoorTempSamples:
       Power=HeatingPowerGain*temperature+HeatingPowerOffset
       CorrPower.append(Power)
-   Correlation=round((pylab.corrcoef(CorrPower, HeatingEnergySamples)[0][1]),3)
+   Correlation=round((pylab.corrcoef(CorrPower, HeatingPowerSamples)[0][1]),3)
    return(HeatingPowerGain, HeatingPowerOffset,Correlation)
 
 ##############################################################################################################
@@ -245,19 +296,21 @@ def FitHeatingAndTemperatureData(OutdoorTempSamples, HeatingEnergySamples):
 # Get the data from Domoticz
 
 OutdoorData = GetOutdoorTemp()
-HeatingEnergyData = GetHeatingEnergy()
+
+if UseGasDataForHeatingEnergyEstimation:
+   HeatingEnergyData = GetHeatingEnergyFromGasUsage()
+else:
+   HeatingEnergyData = GetHeatingEnergy()
 
 #Create One dictionary of measurements, date+time based.
 
 Measurements=CreateDictionaryOfData(OutdoorData, HeatingEnergyData)
 
 # Now Create the lists of data for the fitting algorithm to use.
-
-OutdoorTempSamples, HeatingEnergySamples = GetDataListsFromDictionary(Measurements)
+OutdoorTempSamples, HeatingPowerSamples = GetDataListsFromDictionary(Measurements)
 
 # Fit a straight line over the energy points and calculate some points for the plot.
-
-HeatingPowerPerxxhGain, HeatingPowerPerxxhOffset, Correlation = FitHeatingAndTemperatureData(OutdoorTempSamples, HeatingEnergySamples)
+HeatingPowerPerxxhGain, HeatingPowerPerxxhOffset, Correlation = FitHeatingAndTemperatureData(OutdoorTempSamples, HeatingPowerSamples)
 
 HeatingPowerMax=HeatingPowerPerxxhGain*PlotMinTemperature+HeatingPowerPerxxhOffset
 HeatingPowerMin=HeatingPowerPerxxhGain*PlotMaxTemperature+HeatingPowerPerxxhOffset
@@ -296,9 +349,12 @@ CrossSectionPowerLine=[PlotMinTemperature,OutsideTemperatureOfInterest]
 TempBaseLine=[OutsideTemperatureOfInterest,OutsideTemperatureOfInterest]
 PowerBaseLine=[HeatingPowerTemperatureOffInterest,HeatingPowerTemperatureOffInterest]
 
+#Calculate the Offsets for the text labels in the plot
+LabelOffsetY=(PlotMaxPower/24.0)
+
 # Make the plot.
 
-pylab.plot(OutdoorTempSamples, HeatingEnergySamples, 'r.')
+pylab.plot(OutdoorTempSamples, HeatingPowerSamples, 'r.')
 pylab.plot(HeatingPowerFitlineTemp, HeatingPowerFitline, 'r-', label="HeatingPower")
 pylab.plot(CrossSectionPowerLine, PowerBaseLine, 'k-')
 pylab.plot(TempBaseLine, CrossSectionTempLine, 'k-')
@@ -311,11 +367,11 @@ ylabeltext="Required Heating Power / "+HoursForHeatingADay.__str__()+"h [kW]"
 pylab.ylabel(ylabeltext)
 pylab.grid(True)
 
-pylab.text(-0,(PlotMaxPower-0.8),HeatingLimitString)
-pylab.text(13,(PlotMaxPower-0.8),HeatingLimitValueString)
-pylab.text(-0,(PlotMaxPower-1.3),PowerRequiredTemperatureOffInterestString)
-pylab.text(13,(PlotMaxPower-1.3),PowerRequiredTemperatureOffInterestValueString)
-pylab.text(-10,(PlotMaxPower-2.8),AlternativeHeatingPowerString)
+pylab.text(-0,(PlotMaxPower-(LabelOffsetY+0.3)),HeatingLimitString)
+pylab.text(13,(PlotMaxPower-(LabelOffsetY+0.3)),HeatingLimitValueString)
+pylab.text(-0,(PlotMaxPower-(2*LabelOffsetY+0.3)),PowerRequiredTemperatureOffInterestString)
+pylab.text(13,(PlotMaxPower-(2*LabelOffsetY+0.3)),PowerRequiredTemperatureOffInterestValueString)
+pylab.text(-10,(PlotMaxPower-(5*LabelOffsetY+0.3)),AlternativeHeatingPowerString)
 pylab.text((PlotMinTemperature+0.1),(HeatingPowerTemperatureOffInterest+0.1),PowerRequiredTemperatureOffInterestValueString)
 pylab.text((OutsideTemperatureOfInterest+0.1),(PlotMinPower+0.1),OutsideTemperatureOfInterestString)
 pylab.show()
