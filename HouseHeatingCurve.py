@@ -8,6 +8,7 @@
 #        Added option to estimate yearly energy required and internal and external heating sources.
 #        Distributed the data over subplots so it remains readable.
 # V0.4 : Added python reference for shell in first line of the script, made csv as data source default
+# V0.41: Added Python3 style urllib with fallback for python 2 style 
 ##############################################################################################################
 # Script queries Heating (kWh) and Temperature (oC) data from Domoticz stored in sensors with ids 
 # OutDoorTemperatureSensorID and HeatingEnergySensorID and analyses the data from DateStartAnalyses till 
@@ -56,7 +57,12 @@
 # Imports
 ##############################################################################################################
 import datetime
-import urllib2
+try:
+   #Python 3 
+   from urllib.request import urlopen
+except ImportError:
+   #Python 2
+   from urllib2 import urlopen
 import ssl
 import json
 import collections
@@ -105,7 +111,7 @@ HoursForHeatingADay = float(22.0)
 CostPerkWh = float(0.227)
 
 #Indicate to use a csv file
-UseCSVFileAsDataSource=True
+UseCSVFileAsDataSource=False
 CSVFile="MyDataFile.csv"
 
 #Sensor IDx from Domoticz
@@ -224,7 +230,7 @@ def GetOutdoorTemp():
    #print('>GetOutdoorTemp')
    ReturnList=[]
    try:
-      Page=urllib2.urlopen(OutdoorTemperatureDataURL, context=UnverifiedContext)
+      Page=urlopen(OutdoorTemperatureDataURL, context=UnverifiedContext)
       DataString=Page.read()
       JsonData=json.loads(DataString)
       TemperatureList=JsonData['result']
@@ -243,7 +249,7 @@ def GetIndoorTemp():
    #print('>GetIndoorTemp')
    ReturnList=[]
    try:
-      Page=urllib2.urlopen(IndoorTemperatureDataURL, context=UnverifiedContext)
+      Page=urlopen(IndoorTemperatureDataURL, context=UnverifiedContext)
       DataString=Page.read()
       JsonData=json.loads(DataString)
       TemperatureList=JsonData['result']
@@ -262,7 +268,7 @@ def GetHeatingEnergy():
    #print('>GetHeatingEnergy')
    ReturnList=[]
    try:
-      Page=urllib2.urlopen(HeatingEnergyDataURL, context=UnverifiedContext)
+      Page=urlopen(HeatingEnergyDataURL, context=UnverifiedContext)
       DataString=Page.read()
       JsonData=json.loads(DataString)
       HeatingEnergyList=JsonData['result']
@@ -281,7 +287,7 @@ def GetTotalUsedElectricEnergy():
    #print('>GetTotalUsedElectricEnergy')
    ReturnList=[]
    try:
-      Page=urllib2.urlopen(TotalElectricUsageDataURL, context=UnverifiedContext)
+      Page=urlopen(TotalElectricUsageDataURL, context=UnverifiedContext)
       DataString=Page.read()
       JsonData=json.loads(DataString)
       EnergyList=JsonData['result']
@@ -313,7 +319,7 @@ def GetHeatingEnergyFromGasUsage():
    #print('>GetHeatingEnergyFromGasUsage')
    ReturnList=[]
    try:
-      Page=urllib2.urlopen(GasUsageDataURL, context=UnverifiedContext)
+      Page=urlopen(GasUsageDataURL, context=UnverifiedContext)
       DataString=Page.read()
       JsonData=json.loads(DataString)
       HeatingEnergyList=JsonData['result']
