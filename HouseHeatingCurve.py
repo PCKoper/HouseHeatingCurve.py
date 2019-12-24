@@ -70,7 +70,7 @@ from scipy import argmax
 ##############################################################################################################
 
 ##############################################################################################################
-# Config Start 												     #
+# Config Start                                                                                               #
 ##############################################################################################################
 DateStartAnalyses=datetime.date(2019,9,12)
 DateEndAnalyses=datetime.date(2019,12,23)
@@ -207,18 +207,18 @@ def CalculateDaysPerYearBelowTemperature(Temperature):
       if temp < Temperature:
          LowValue=LowValue+day
       elif temp == Temperature:
-	 LowValue=LowValue+day
-	 HighValue=LowValue
-	 HighValueTemperature = temp
-	 HighValueFound = True
+         LowValue=LowValue+day
+         HighValue=LowValue
+         HighValueTemperature = temp
+         HighValueFound = True
       else:
          if not HighValueFound:
-	    HighValue = LowValue+day
-	    HighValueTemperature = temp
-	    HighValueFound = True
+            HighValue = LowValue+day
+            HighValueTemperature = temp
+            HighValueFound = True
    Fraction=1.0-((HighValueTemperature-Temperature)/0.5)
    DaysPerYear=LowValue+(Fraction*(HighValue-LowValue))
-   return(DaysPerYear)	 
+   return(DaysPerYear)
 
 def GetOutdoorTemp():
    #print('>GetOutdoorTemp')
@@ -231,9 +231,9 @@ def GetOutdoorTemp():
       #Filter out only the items with proper values
       for item in TemperatureList:
          if 'd' in item:
-	    if DataInAnalysesWindow(item['d']):
-	       if 'ta' in item:
-		  ReturnList.append(item)
+            if DataInAnalysesWindow(item['d']):
+               if 'ta' in item:
+                  ReturnList.append(item)
    except (urllib2.HTTPError, urllib2.URLError) as fout:
       print("Error: "+str(fout)+" URL: "+OutdoorTemperatureDataURL)
    #print('<GetOutdoorTemp:'+ReturnList.__str__())
@@ -250,9 +250,9 @@ def GetIndoorTemp():
       #Filter out only the items with proper values
       for item in TemperatureList:
          if 'd' in item:
-	    if DataInAnalysesWindow(item['d']):
-	       if 'ta' in item:
-		  ReturnList.append(item)
+            if DataInAnalysesWindow(item['d']):
+               if 'ta' in item:
+                  ReturnList.append(item)
    except (urllib2.HTTPError, urllib2.URLError) as fout:
       print("Error: "+str(fout)+" URL: "+IndoorTemperatureDataURL)
    #print('<GetIndoorTemp:'+ReturnList.__str__())
@@ -269,9 +269,9 @@ def GetHeatingEnergy():
       #Filter out only the items with proper values
       for item in HeatingEnergyList:
          if 'd' in item:
-	    if DataInAnalysesWindow(item['d']):
-	       if 'v_max' and 'v_min' in item:
-		  ReturnList.append(item)
+            if DataInAnalysesWindow(item['d']):
+               if 'v_max' and 'v_min' in item:
+                  ReturnList.append(item)
    except (urllib2.HTTPError, urllib2.URLError) as fout:
       print("Error: "+str(fout)+" URL: "+HeatingEnergyDataURL)
    #print('<GetHeatingEnergy:'+ReturnList.__str__())
@@ -288,9 +288,9 @@ def GetTotalUsedElectricEnergy():
       #Filter out only the items with proper values
       for item in EnergyList:
          if 'd' in item:
-	    if DataInAnalysesWindow(item['d']):
-	       if 'v' in item:
-		  ReturnList.append(item)
+            if DataInAnalysesWindow(item['d']):
+               if 'v' in item:
+                  ReturnList.append(item)
    except (urllib2.HTTPError, urllib2.URLError) as fout:
       print("Error: "+str(fout)+" URL: "+TotalElectricUsageDataURL)
    #print('<GetTotalUsedElectricEnergy:'+ReturnList.__str__())
@@ -302,9 +302,9 @@ def ProcessElectricEnergy(RawList):
    for entry in RawList:
       ValueDict = dict()
       if 'd' in entry:
-	 ValueDict['d'] = entry['d']
+         ValueDict['d'] = entry['d']
       if 'v' in entry:
-	 ValueDict['v'] = round(TotalUsageCorrectionFactor*float(entry['v']),3)
+         ValueDict['v'] = round(TotalUsageCorrectionFactor*float(entry['v']),3)
       ReturnList.append(ValueDict)
    #print('<ProcessElectricEnergy:'+ReturnList.__str__())
    return(ReturnList)
@@ -320,9 +320,9 @@ def GetHeatingEnergyFromGasUsage():
       #Filter out only the items with proper values
       for item in HeatingEnergyList:
          if 'd' in item:
-	    if DataInAnalysesWindow(item['d']):
-	       if 'v' in item:
-		  ReturnList.append(item)
+            if DataInAnalysesWindow(item['d']):
+               if 'v' in item:
+                  ReturnList.append(item)
    except (urllib2.HTTPError, urllib2.URLError) as fout:
       print("Error: "+str(fout)+" URL: "+GasUsageDataURL)
    #print('<GetHeatingEnergyFromGasUsage:'+ReturnList.__str__())
@@ -335,14 +335,14 @@ def CreateDictionaryOfData (IndoorData, OutdoorData, HeatingEnergyData, Electric
    OutputDict=collections.OrderedDict()
    if (EstimateAdditionalInternalAndExternalEnergy):
       for item in IndoorData:
-	 ValueDict = dict()
-	 ValueDict['IndoorTemperature']=item['ta']
-	 if item['d'] in OutputDict:
-	    OutputDict[item['d']].append(ValueDict)
-	 else:
-	    ValueList = []
-	    ValueList.append(ValueDict)
-	    OutputDict[item['d']]=ValueList
+         ValueDict = dict()
+         ValueDict['IndoorTemperature']=item['ta']
+         if item['d'] in OutputDict:
+            OutputDict[item['d']].append(ValueDict)
+         else:
+            ValueList = []
+            ValueList.append(ValueDict)
+            OutputDict[item['d']]=ValueList
       for item in ElectricEnergyData:
          ValueDict = dict()
          ValueDict['ElectricEnergy']=item['v']
@@ -356,31 +356,31 @@ def CreateDictionaryOfData (IndoorData, OutdoorData, HeatingEnergyData, Electric
       ValueDict = dict()
       ValueDict['OutdoorTemperature']=item['ta']
       if item['d'] in OutputDict:
-	 OutputDict[item['d']].append(ValueDict)
+         OutputDict[item['d']].append(ValueDict)
       else:
-	 ValueList = []
-	 ValueList.append(ValueDict)
-	 OutputDict[item['d']]=ValueList
+         ValueList = []
+         ValueList.append(ValueDict)
+         OutputDict[item['d']]=ValueList
    if (UseGasDataForHeatingEnergyEstimation):
       for item in HeatingEnergyData:
-	 ValueDict = dict()
-	 ValueDict['Energy']=ConvertGasTokWh(float(item['v'])).__str__()
-	 if item['d'] in OutputDict:
-	    OutputDict[item['d']].append(ValueDict)
-	 else:
-	    ValueList = []
-	    ValueList.append(ValueDict)
-	    OutputDict[item['d']]=ValueList
+         ValueDict = dict()
+         ValueDict['Energy']=ConvertGasTokWh(float(item['v'])).__str__()
+         if item['d'] in OutputDict:
+            OutputDict[item['d']].append(ValueDict)
+         else:
+            ValueList = []
+            ValueList.append(ValueDict)
+            OutputDict[item['d']]=ValueList
    else:
       for item in HeatingEnergyData:
-	 ValueDict = dict()
-	 ValueDict['Energy']=(float(item['v_max'])-float(item['v_min'])).__str__()
-	 if item['d'] in OutputDict:
-	    OutputDict[item['d']].append(ValueDict)
-	 else:
-	    ValueList = []
-	    ValueList.append(ValueDict)
-	    OutputDict[item['d']]=ValueList
+         ValueDict = dict()
+         ValueDict['Energy']=(float(item['v_max'])-float(item['v_min'])).__str__()
+         if item['d'] in OutputDict:
+            OutputDict[item['d']].append(ValueDict)
+         else:
+            ValueList = []
+            ValueList.append(ValueDict)
+            OutputDict[item['d']]=ValueList
    return(OutputDict)
 
 def GetDataListsFromDictionary (Measurements):
@@ -395,14 +395,14 @@ def GetDataListsFromDictionary (Measurements):
    PreviousElectricEnergy = 0.0
    for Date, ValueList in Measurements.iteritems():
       for Value in ValueList:
-	 if 'Energy' in Value:
-	    PreviousHeatingPower = float(Value['Energy'])/HoursForHeatingADay
-	 if 'OutdoorTemperature' in Value:
-	    PreviousOutdoorTemperature = float(Value['OutdoorTemperature'])
-	 if 'ElectricEnergy' in Value:
-	    PreviousElectricEnergy = float(Value['ElectricEnergy'])
- 	 if 'IndoorTemperature' in Value:
-	    PreviousIndoorTemperature = float(Value['IndoorTemperature'])
+         if 'Energy' in Value:
+            PreviousHeatingPower = float(Value['Energy'])/HoursForHeatingADay
+         if 'OutdoorTemperature' in Value:
+            PreviousOutdoorTemperature = float(Value['OutdoorTemperature'])
+         if 'ElectricEnergy' in Value:
+            PreviousElectricEnergy = float(Value['ElectricEnergy'])
+         if 'IndoorTemperature' in Value:
+            PreviousIndoorTemperature = float(Value['IndoorTemperature'])
       ElectricEnergySamples.append(PreviousElectricEnergy)
       HeatingPowerSamples.append(PreviousHeatingPower)
       IndoorTempSamples.append(PreviousIndoorTemperature)
@@ -417,17 +417,17 @@ def GetDataListsFromCSVFile():
    with open(CSVFile) as csvfile:
       readCSV=csv.reader(csvfile, delimiter=',')
       for row in readCSV:
-	 if row[0].strip() and row[1].strip():
+         if row[0].strip() and row[1].strip():
             OutdoorTempSamples.append(float(row[0]))
             if UseGasDataForHeatingEnergyEstimation:
-	       HeatingPower=ConvertGasTokWh(float(row[1]))/HoursForHeatingADay
-	    else:
-	       HeatingPower= float(row[1])/HoursForHeatingADay  
-	    HeatingPowerSamples.append(HeatingPower)
-	 if EstimateAdditionalInternalAndExternalEnergy:
-	    if row[2].strip() and row[3].strip():
-	       IndoorTempSamples.append(float(row[2]))
-	       ElectricitySamples.append(round(TotalUsageCorrectionFactor*float(row[3]),3))
+               HeatingPower=ConvertGasTokWh(float(row[1]))/HoursForHeatingADay
+            else:
+               HeatingPower= float(row[1])/HoursForHeatingADay  
+            HeatingPowerSamples.append(HeatingPower)
+         if EstimateAdditionalInternalAndExternalEnergy:
+            if row[2].strip() and row[3].strip():
+               IndoorTempSamples.append(float(row[2]))
+               ElectricitySamples.append(round(TotalUsageCorrectionFactor*float(row[3]),3))
    return(OutdoorTempSamples, HeatingPowerSamples, IndoorTempSamples, ElectricitySamples)
    
 def FitEnergyVsTOutsideFunction(OutdoorTempSamples, Gain, Offset):
