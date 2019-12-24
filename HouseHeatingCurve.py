@@ -60,9 +60,13 @@ import datetime
 try:
    #Python 3 
    from urllib.request import urlopen
+   from urllib.error import HTTPError as HTTPError
+   from urllib.error import URLError as URLError
 except ImportError:
    #Python 2
    from urllib2 import urlopen
+   from urllib2 import HTTPError as HTTPError
+   from urllib2 import URLError as URLError
 import ssl
 import json
 import collections
@@ -143,7 +147,7 @@ GasUsageDataURL=QueryPreFix+Counter+GasSensorID+QueryPostFix
 TotalElectricUsageDataURL=QueryPreFix+Counter+TotalElectricSensorID+QueryPostFix
 
 
-#Creating a context to indicate to urllib2 that we don't want SSL verification
+#Creating a context to indicate to urllib(2) that we don't want SSL verification
 #in case the domoticz setup does not have a valid CERT certificate.
 UnverifiedContext = ssl._create_unverified_context()
 
@@ -240,7 +244,7 @@ def GetOutdoorTemp():
             if DataInAnalysesWindow(item['d']):
                if 'ta' in item:
                   ReturnList.append(item)
-   except (urllib2.HTTPError, urllib2.URLError) as fout:
+   except (HTTPError, URLError) as fout:
       print("Error: "+str(fout)+" URL: "+OutdoorTemperatureDataURL)
    #print('<GetOutdoorTemp:'+ReturnList.__str__())
    return(ReturnList)
@@ -259,7 +263,7 @@ def GetIndoorTemp():
             if DataInAnalysesWindow(item['d']):
                if 'ta' in item:
                   ReturnList.append(item)
-   except (urllib2.HTTPError, urllib2.URLError) as fout:
+   except (HTTPError, URLError) as fout:
       print("Error: "+str(fout)+" URL: "+IndoorTemperatureDataURL)
    #print('<GetIndoorTemp:'+ReturnList.__str__())
    return(ReturnList)
@@ -278,7 +282,7 @@ def GetHeatingEnergy():
             if DataInAnalysesWindow(item['d']):
                if 'v_max' and 'v_min' in item:
                   ReturnList.append(item)
-   except (urllib2.HTTPError, urllib2.URLError) as fout:
+   except (HTTPError, URLError) as fout:
       print("Error: "+str(fout)+" URL: "+HeatingEnergyDataURL)
    #print('<GetHeatingEnergy:'+ReturnList.__str__())
    return(ReturnList)
@@ -297,7 +301,7 @@ def GetTotalUsedElectricEnergy():
             if DataInAnalysesWindow(item['d']):
                if 'v' in item:
                   ReturnList.append(item)
-   except (urllib2.HTTPError, urllib2.URLError) as fout:
+   except (HTTPError, URLError) as fout:
       print("Error: "+str(fout)+" URL: "+TotalElectricUsageDataURL)
    #print('<GetTotalUsedElectricEnergy:'+ReturnList.__str__())
    return(ReturnList)
@@ -329,7 +333,7 @@ def GetHeatingEnergyFromGasUsage():
             if DataInAnalysesWindow(item['d']):
                if 'v' in item:
                   ReturnList.append(item)
-   except (urllib2.HTTPError, urllib2.URLError) as fout:
+   except (HTTPError, URLError) as fout:
       print("Error: "+str(fout)+" URL: "+GasUsageDataURL)
    #print('<GetHeatingEnergyFromGasUsage:'+ReturnList.__str__())
    return(ReturnList)
