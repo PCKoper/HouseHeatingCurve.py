@@ -8,7 +8,7 @@
 #        Added option to estimate yearly energy required and internal and external heating sources.
 #        Distributed the data over subplots so it remains readable.
 # V0.4 : Added python reference for shell in first line of the script, made csv as data source default
-# V0.41: Added Python3 style urllib with fallback for python 2 style 
+# V0.41: Added Python3 style urllib with fallback for python 2 style changed some constructs to be python3.5 compatible.
 ##############################################################################################################
 # Script queries Heating (kWh) and Temperature (oC) data from Domoticz stored in sensors with ids 
 # OutDoorTemperatureSensorID and HeatingEnergySensorID and analyses the data from DateStartAnalyses till 
@@ -236,7 +236,7 @@ def GetOutdoorTemp():
    try:
       Page=urlopen(OutdoorTemperatureDataURL, context=UnverifiedContext)
       DataString=Page.read()
-      JsonData=json.loads(DataString)
+      JsonData=json.loads(DataString.decode('utf-8'))
       TemperatureList=JsonData['result']
       #Filter out only the items with proper values
       for item in TemperatureList:
@@ -255,7 +255,7 @@ def GetIndoorTemp():
    try:
       Page=urlopen(IndoorTemperatureDataURL, context=UnverifiedContext)
       DataString=Page.read()
-      JsonData=json.loads(DataString)
+      JsonData=json.loads(DataString.decode('utf-8'))
       TemperatureList=JsonData['result']
       #Filter out only the items with proper values
       for item in TemperatureList:
@@ -274,7 +274,7 @@ def GetHeatingEnergy():
    try:
       Page=urlopen(HeatingEnergyDataURL, context=UnverifiedContext)
       DataString=Page.read()
-      JsonData=json.loads(DataString)
+      JsonData=json.loads(DataString.decode('utf-8'))
       HeatingEnergyList=JsonData['result']
       #Filter out only the items with proper values
       for item in HeatingEnergyList:
@@ -293,7 +293,7 @@ def GetTotalUsedElectricEnergy():
    try:
       Page=urlopen(TotalElectricUsageDataURL, context=UnverifiedContext)
       DataString=Page.read()
-      JsonData=json.loads(DataString)
+      JsonData=json.loads(DataString.decode('utf-8'))
       EnergyList=JsonData['result']
       #Filter out only the items with proper values
       for item in EnergyList:
@@ -325,7 +325,7 @@ def GetHeatingEnergyFromGasUsage():
    try:
       Page=urlopen(GasUsageDataURL, context=UnverifiedContext)
       DataString=Page.read()
-      JsonData=json.loads(DataString)
+      JsonData=json.loads(DataString.decode('utf-8'))
       HeatingEnergyList=JsonData['result']
       #Filter out only the items with proper values
       for item in HeatingEnergyList:
@@ -403,7 +403,7 @@ def GetDataListsFromDictionary (Measurements):
    PreviousOutdoorTemperature = 0.0
    PreviousHeatingPower = 0.0
    PreviousElectricEnergy = 0.0
-   for Date, ValueList in Measurements.iteritems():
+   for Date, ValueList in Measurements.items():
       for Value in ValueList:
          if 'Energy' in Value:
             PreviousHeatingPower = float(Value['Energy'])/HoursForHeatingADay
