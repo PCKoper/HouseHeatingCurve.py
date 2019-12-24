@@ -1,11 +1,13 @@
+#!/usr/bin/env python
 ##############################################################################################################
 # HouseHeatingCurve.py 
-# Last Update: December 16th 2019
+# Last Update: December 24th 2019
 # V0.1 : Initial Creation
 # V0.2 : Update comments, added scaling on placement of text labels in the plot, added Gas Sensor.
 # V0.3 : Added option to read data from .csv file i.s.o. Domoticz query.
 #        Added option to estimate yearly energy required and internal and external heating sources.
 #        Distributed the data over subplots so it remains readable.
+# V0.4 : Added python reference for shell in first line of the script, made csv as data source default
 ##############################################################################################################
 # Script queries Heating (kWh) and Temperature (oC) data from Domoticz stored in sensors with ids 
 # OutDoorTemperatureSensorID and HeatingEnergySensorID and analyses the data from DateStartAnalyses till 
@@ -71,7 +73,7 @@ from scipy import argmax
 # Config Start 												     #
 ##############################################################################################################
 DateStartAnalyses=datetime.date(2019,9,12)
-DateEndAnalyses=datetime.date(2019,12,22)
+DateEndAnalyses=datetime.date(2019,12,23)
 #DateEndAnalyses=datetime.datetime.now().date()
 
 # Indicate to use energy data from Domoticz in kWh, or use Gas data and convert that to kWh
@@ -103,7 +105,7 @@ HoursForHeatingADay = float(22.0)
 CostPerkWh = float(0.227)
 
 #Indicate to use a csv file
-UseCSVFileAsDataSource=False
+UseCSVFileAsDataSource=True
 CSVFile="MyDataFile.csv"
 
 #Sensor IDx from Domoticz
