@@ -70,8 +70,11 @@
 # DataSource.FromCSVFileGasOnly:
 ##########################
 # When a .CSV Gas only File is selected as data source the file specified by [CSVGasOnlyFile] is read and should 
-# contain two columns: date, m^3 Gas and be ordered by date. The script will query the KNMI site for average outdoor 
-# temperature data from the weather station defined by [KNMIStationToUse] between the first and last date. 
+# contain two columns: date, m^3 Gas and be sorted by date. Date Format is YYYY-mm-dd, e.g. "2019-12-25", when the
+# date field also contains a time, like "2019-12-25 00:00:00" the time part will be ignored, but make sure there is
+# only one entry in the file per date.
+# The script will query the KNMI site for average outdoor temperature data from the weather station defined by 
+# [KNMIStationToUse] between the first and last date. 
 # (Look in the StationIDDictionary below for available names to configure) example: KNMIStationToUse="Volkel"
 #
 # From the Gas, the Energy is estimated by deducting the amount of Gas you use for Warm Water and Cooking indicated 
@@ -135,7 +138,7 @@ DateEndAnalyses=datetime.date(2019,12,25)
 #DateEndAnalyses=datetime.datetime.now().date()
 
 #IndicateWhereToGetTheDataFrom, use on of the DataSource Members to configure
-GetDataFrom=DataSource.FromCSVFile
+GetDataFrom=DataSource.FromCSVFileGasOnly
 
 # Indicate to use energy data from Domoticz in kWh, or use Gas data and convert that to kWh
 UseGasDataForHeatingEnergyEstimation = False
