@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 ##############################################################################################################
 # HouseHeatingCurve.py 
-# Last Update: December 24th 2019
+# Last Update: December 26th 2019
 # V0.1 : Initial Creation
 # V0.2 : Update comments, added scaling on placement of text labels in the plot, added Gas Sensor.
 # V0.3 : Added option to read data from .csv file i.s.o. Domoticz query.
@@ -9,45 +9,86 @@
 #        Distributed the data over subplots so it remains readable.
 # V0.4 : Added python reference for shell in first line of the script, made csv as data source default
 # V0.41: Added Python3 style urllib with fallback for python 2 style changed some constructs to be python3.5 compatible.
+# v0.5 : Added Gas Only file option with temperature query from KNMI, updated introduction.
 ##############################################################################################################
-# Script queries Heating (kWh) and Temperature (oC) data from Domoticz stored in sensors with ids 
-# OutDoorTemperatureSensorID and HeatingEnergySensorID and analyses the data from DateStartAnalyses till 
-# DateEndAnalyses.
-# Optionally when EstimateAdditionalInternalAndExternalEnergy is set to True it can do an analyses on the 
+#
+# This script uses heating energy and outdoor temperature data to estimate the required heatpump capacity
+# at an outdoor temperature of interest. It will also estimate the yearly energy usage based on this in combination
+# with historical outdoor temperature data from the KNMI.
+#
+# Configurable parameters mentioned in this introduction are depicted with [] so; [ParameterThatCanBeConfigured]
+#
+# The script uses Domoticz as data source for energy and outdoor temperature, but can also be used without Domoticz,
+# to configure this, set the [GetDataFrom] parameter to the corresponding DataSource class value, options are:  
+# DataSource.FromDomoticz, DataSource.FromCSVFile, DataSource.FromCSVFileGasOnly
+#
+# DataSource.FromDomoticz:
+##########################
+# Heating (kWh) and Temperature (oC) data is queried from Domoticz with sensors ids:
+# [OutDoorTemperatureSensorID]        (standard Domoticz temperature sensor)
+# [HeatingEnergySensorID]             (sensor type General, subtype Custom Sensor)
+# Data is analysed between [DateStartAnalyses] and [DateEndAnalyses].
+#
+# When Domoticz is selected as data source there are a few additional options that can be configured:
+#
+# [UseGasDataForHeatingEnergyEstimation], when set to True, instead of using energy data from [HeatingEnergySensorID]
+# the Gas data will be used from [GasSensorID] and the Energy is estimated by deducting the amount of Gas you use for
+# Warm Water and Cooking indicated by [CubicMetersGasADayForWarmWaterAndCooking] and multiplied with 
+# [EnergyPerCubicMeterGas] 
+# Default setting of [EnergyPerCubicMeterGas] is 31.65/3.6 which equals the energy content of Natural Gas used in Holland,
+# assuming the heater is not finely tuned to make use of additional energy from condensation of the water vapor.
+#
+# When [EstimateAdditionalInternalAndExternalEnergy] is set to True it can do an analyses on the 
 # additional internal and external heating power sources, for which it will need indoor temperature data 
-# (InDoorTemperatureSensorID), used electricity data (TotalElectricSensorID) and an estimate for the average 
-# heat produced per day by the people inside the house as set with the HeatFromWarmBodies parameter.
+# [InDoorTemperatureSensorID], the used electricity data [TotalElectricSensorID] and an estimate for the average 
+# heat produced per day by the people inside the house as set with the [HeatFromWarmBodies] parameter. 
 #
-# The Script can also be used without Domoticz, the required average outside temperature and heating information
-# can be read from a csv file. Indicate this by setting UseCSVFileAsDataSource to True and specify the correct
-# filename of the file to use in CSVFile. The CSV file should contain 2 columns of data: outside temperature, energy
-# and no header. The GiGo principle applies here, please make sure the file is formatted correctly.
-# When the option EstimateAdditionalInternalAndExternalEnergy is set to True, the file should also contain 
-# columns for the indoor temperature and the used electricity in kWh, so than the order of the columns would
-# be: outdoor temperature, energy, indoor temperature, electricity.
+# When using Domoticz as data source, make sure you update the IP adress and port number of [DomoticzHostAndPort] so
+# it reflects the correct Domoticz host for you.
 #
-# The OutdoorTemperatureSensor is a standard Domoticz temperature sensor, the HeatingEnergySensor is a sensor
-# type General, subtype Custom Sensor, I use a Kamstrup302 to accurately measure the energy going into my 
-# heating system. 
-# When you don't have such a device, but do have a smart Gas meter, that one can also be used by setting
-# the UseGasDataForHeatingEnergyEstimation to True. In that case GasSensorID will be used to get the data
-# and the Energy is estimated by deducting the amount of Gas you use for Warm Water and Cooking indicated by 
-# CubicMetersGasADayForWarmWaterAndCooking and multiply this with EnergyPerCubicMeterGas. 
-# Default setting of 31.65/3.6 equals the energy content of Natural Gas used in Holland, assuming the heater
-# is not finely tuned to make use of additional energy from condensation of the water vapor.
-# The csv file energy column is also interpreted to have gas in cubic meters when the 
-# UseGasDataForHeatingEnergyEstimation parameter equals True.
+# DataSource.FromCSVFile:
+##########################
+# When a .CSV File is selected as data source there are a few additional options that can be configured:
+# 
+# Specify the correct filename of the file to use in [CSVFile]. The CSV file should not contain a header and
+# 2 columns of data when [EstimateAdditionalInternalAndExternalEnergy] is set to False: 
+# outside temperature, energy
+# Since there is no data checking on the file you specify, the GiGo principle applies here, please make sure 
+# the file is formatted correctly.
 #
-# The script will calculate the required heating power at OutsideTemperatureOfInterest when taking into account a 
-# maximum number of hours it can run a day defined by HoursForHeatingADay.
+# When [EstimateAdditionalInternalAndExternalEnergy] is set to True, 4 columns of data are required in the file:
+# outdoor temperature, energy, indoor temperature, electricity
+#
+# When [UseGasDataForHeatingEnergyEstimation] is set to True, the 2nd column, energy is interpreted as cubic meters
+# of Gas.
+#
+# From the Gas, the Energy is estimated by deducting the amount of Gas you use for Warm Water and Cooking indicated 
+# by [CubicMetersGasADayForWarmWaterAndCooking] and multiplied with [EnergyPerCubicMeterGas] 
+# Default setting of [EnergyPerCubicMeterGas] is 31.65/3.6 which equals the energy content of Natural Gas used in Holland,
+# assuming the heater is not finely tuned to make use of additional energy from condensation of the water vapor.
+#
+# DataSource.FromCSVFileGasOnly:
+##########################
+# When a .CSV Gas only File is selected as data source the file specified by [CSVGasOnlyFile] is read and should 
+# contain two columns: date, m^3 Gas and be ordered by date. The script will query the KNMI site for average outdoor 
+# temperature data from the weather station defined by [KNMIStationToUse] between the first and last date. 
+# (Look in the StationIDDictionary below for available names to configure) example: KNMIStationToUse="Volkel"
+#
+# From the Gas, the Energy is estimated by deducting the amount of Gas you use for Warm Water and Cooking indicated 
+# by [CubicMetersGasADayForWarmWaterAndCooking] and multiplied with [EnergyPerCubicMeterGas] 
+# Default setting of [EnergyPerCubicMeterGas] is 31.65/3.6 which equals the energy content of Natural Gas used in Holland,
+# assuming the heater is not finely tuned to make use of additional energy from condensation of the water vapor.
+#
+# Generic Parameters:
+###########################
+#
+# The script will calculate the required heating power at [OutsideTemperatureOfInterest] while taking into account a 
+# maximum number of hours it can run a day defined by [HoursForHeatingADay].
 #
 # It will also calculate the required maximum power of additional heating which will be required not to have 
 # the house cooling down based on historic data since 1951 from ALL KNMI weather stations in the Netherlands.
 # Based on this it will give an estimate on the amount of energy spend this way in kWh per year and the cost of
-# it based on the CostPerkWh.
-#
-# Make sure you update the IP adress and port number of DomoticzHostAndPort so it reflects the correct
-# Domoticz host for you.
+# it based on the [CostPerkWh].
 #
 # Other defines do not need changing.
 # 
@@ -59,18 +100,21 @@
 import datetime
 try:
    #Python 3 
+   from urllib.request import Request as PostRequest
    from urllib.request import urlopen
    from urllib.error import HTTPError as HTTPError
    from urllib.error import URLError as URLError
 except ImportError:
    #Python 2
    from urllib2 import urlopen
+   from urllib2 import Request as PostRequest
    from urllib2 import HTTPError as HTTPError
    from urllib2 import URLError as URLError
 import ssl
 import json
 import collections
 import csv
+import enum
 import pylab
 from scipy.optimize import curve_fit
 from scipy import argmax
@@ -78,13 +122,20 @@ from scipy import argmax
 ##############################################################################################################
 # Definitions                                                                                                #
 ##############################################################################################################
+class DataSource(enum.Enum):
+   FromDomoticz = 1
+   FromCSVFile = 2
+   FromCSVFileGasOnly = 3
 
 ##############################################################################################################
 # Config Start                                                                                               #
 ##############################################################################################################
 DateStartAnalyses=datetime.date(2019,9,12)
-DateEndAnalyses=datetime.date(2019,12,23)
+DateEndAnalyses=datetime.date(2019,12,25)
 #DateEndAnalyses=datetime.datetime.now().date()
+
+#IndicateWhereToGetTheDataFrom, use on of the DataSource Members to configure
+GetDataFrom=DataSource.FromCSVFile
 
 # Indicate to use energy data from Domoticz in kWh, or use Gas data and convert that to kWh
 UseGasDataForHeatingEnergyEstimation = False
@@ -93,7 +144,7 @@ CubicMetersGasADayForWarmWaterAndCooking = float(8/30)
 
 #Indicate to use indoor temperature data, indoor electricity and estimated heat from ppl to estimate
 #the average of the additional internal and external heat contributions.
-EstimateAdditionalInternalAndExternalEnergy=True
+EstimateAdditionalInternalAndExternalEnergy=False
 
 #The S0 pulse kWh meters are not measuring exactly the same as the Enexis Meter, since that one determines
 #the bill, I declare that measurement holy and have calibrated the others I have towards it. Make this factor
@@ -114,9 +165,12 @@ HoursForHeatingADay = float(22.0)
 # Price per kWh for the alternative energy to calculate the variabel cost of additional heating.
 CostPerkWh = float(0.227)
 
-#Indicate to use a csv file
-UseCSVFileAsDataSource=False
+#File to use when GetDataFrom=DataSource.FromCSVFile
 CSVFile="MyDataFile.csv"
+
+#File to use when GetDataFrom=DataSource.FromCSVFileGasOnly and the WeatherStation for temperature data
+CSVGasOnlyFile="GasOnly.csv"
+KNMIStationToUse="Volkel"
 
 #Sensor IDx from Domoticz
 OutDoorTemperatureSensorID="20"
@@ -146,6 +200,8 @@ HeatingEnergyDataURL=QueryPreFix+Percentage+HeatingEnergySensorID+QueryPostFix
 GasUsageDataURL=QueryPreFix+Counter+GasSensorID+QueryPostFix
 TotalElectricUsageDataURL=QueryPreFix+Counter+TotalElectricSensorID+QueryPostFix
 
+#KNMI URL to use for daily average temperature data
+KNMIDataURL="http://projects.knmi.nl/klimatologie/daggegevens/getdata_dag.cgi"
 
 #Creating a context to indicate to urllib(2) that we don't want SSL verification
 #in case the domoticz setup does not have a valid CERT certificate.
@@ -195,6 +251,60 @@ DaysPerYearAverageTemperature=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
 # Last year         DaysPerYearAverageTemperature=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.02216, 1.01108, 1.01108, 0.0, 2.02216, 2.02216, 1.01108, 1.01108, 2.02216, 7.07756, 3.03324, 1.01108, 2.02216, 6.06648, 4.04432, 11.12188, 9.09972, 8.08864, 10.1108, 14.15512, 12.13296, 14.15512, 10.1108, 14.15512, 8.08864, 10.1108, 12.13296, 7.07756, 7.07756, 10.1108, 5.0554, 7.07756, 6.06648, 7.07756, 10.1108, 7.07756, 5.0554, 12.13296, 13.14404, 9.09972, 11.12188, 12.13296, 10.1108, 6.06648, 9.09972, 4.04432, 9.09972, 2.02216, 3.03324, 4.04432, 1.01108, 2.02216, 1.01108, 3.03324, 1.01108, 1.01108, 2.02216, 2.02216, 1.01108, 1.01108, 0.0, 0.0, 0.0, 1.01108, 0.0, 1.01108, 0.0, 0.0]
 #
 ##############################################################################################################
+
+#KNMI Stations Dictionary for GasOnly CSV
+StationIDDictionary = {
+   'IJmond'                :'209',
+   'Valkenburg'            :'210',
+   'Voorschoten'           :'215',
+   'IJmuiden'              :'225',
+   'De Kooy'               :'235',
+   'Schiphol'              :'240',
+   'Vlieland'              :'242',
+   'Wijdenes'              :'248',
+   'Berkhout'              :'249',
+   'Hoorn(Terschelling)'   :'251',
+   'WijkaanZee'            :'257',
+   'Houtribdijk'           :'258',
+   'DeBilt'                :'260',
+   'Soesterberg'           :'265',
+   'Stavoren'              :'267',
+   'Lelystad'              :'269',
+   'Leeuwarden'            :'270',
+   'Marknesse'             :'273',
+   'Deelen'                :'275',
+   'Lauwersoog'            :'277',
+   'Heino'                 :'278',
+   'Hoogeveen'             :'279',
+   'Eelde'                 :'280',
+   'Hupsel'                :'283',
+   'Huibertgat'            :'285',
+   'NieuwBeerta'           :'286',
+   'Twenthe'               :'290',
+   'Cadzand'               :'308',
+   'Vlissingen'            :'310',
+   'Hoofdplaat'            :'311',
+   'Oosterschelde'         :'312',
+   'Vlaktev.d.raan'        :'313',
+   'Hansweert'             :'315',
+   'Schaar'                :'316',
+   'Westdorpe'             :'319',
+   'Wilhelminadorp'        :'323',
+   'Stavenisse'            :'324',
+   'HoekvanHolland'        :'330',
+   'Tholen'                :'331',
+   'Woensdrecht'           :'340',
+   'Rdam-Geulhaven'        :'343',
+   'Rotterdam'             :'344',
+   'Cabauw'                :'348',
+   'Gilze-Rijen'           :'350',
+   'Herwijnen'             :'356',
+   'Eindhoven'             :'370',
+   'Volkel'                :'375',
+   'Ell'                   :'377',
+   'Maastricht'            :'380',
+   'Arcen'                 :'391',
+}
 
 
 ##############################################################################################################
@@ -439,6 +549,47 @@ def GetDataListsFromCSVFile():
                IndoorTempSamples.append(float(row[2]))
                ElectricitySamples.append(round(TotalUsageCorrectionFactor*float(row[3]),3))
    return(OutdoorTempSamples, HeatingPowerSamples, IndoorTempSamples, ElectricitySamples)
+
+def GetGasOnlyFromCSVFile():
+   DateSamples=[]
+   GasEnergySamples=[]
+   with open(CSVGasOnlyFile) as csvfile:
+      readCSV=csv.reader(csvfile, delimiter=',')
+      for row in readCSV:
+         if row[0].strip() and row[1].strip():
+            DateString=row[0].split(" ")[0]
+            DateObject=datetime.datetime.strptime(DateString, '%Y-%m-%d').date()
+            DateSamples.append(DateObject)
+            HeatingPower=ConvertGasTokWh(float(row[1]))/HoursForHeatingADay
+            GasEnergySamples.append(HeatingPower)
+   return(DateSamples, GasEnergySamples)
+
+def GetTemperaturesFromKNMI(DateSamples):
+   StationID=StationIDDictionary[KNMIStationToUse]
+   data="vars=TG&start="+DateSamples[0].strftime('%Y%m%d')+"&end="+DateSamples[-1].strftime('%Y%m%d')+"&stns="+StationID
+   req = PostRequest(KNMIDataURL, data.encode('utf-8'))
+   response = urlopen(req)
+   QueryResponse = response.read()
+   DateList, TemperatureList = ParseKNMIData(QueryResponse,StationID)
+   return(DateList, TemperatureList)
+   
+def ParseKNMIData(QueryResponse,StationID):
+   LineCounter = 0
+   DateList=[]
+   TemperatureList=[]
+   QueryResponseLines=QueryResponse.decode().split('\n')
+   for line in QueryResponseLines:
+      LineList=line.split(',')
+      if LineList[0].strip() == StationID:
+         LineCounter = LineCounter + 1 
+         rawdate=LineList[1].strip()
+         rawtemp=LineList[2].strip()
+         if rawtemp and rawdate:
+            DateToAdd = datetime.datetime.strptime(rawdate.__str__(), '%Y%m%d').date()
+            DateList.append(DateToAdd)
+            TemperatureList.append((float(rawtemp)/10.0))
+   return(DateList,TemperatureList)
+
    
 def FitEnergyVsTOutsideFunction(OutdoorTempSamples, Gain, Offset):
    return(OutdoorTempSamples*Gain + Offset)
@@ -475,12 +626,14 @@ def PlotText(PlotReference,EnergyUsageString):
    PlotLineResultsValues=[7.8,7.8]
    PlotReference.plot(PlotLineBase,PlotLineResultsValues, 'k-')
    # Create the label texts for the plot 
-   if UseGasDataForHeatingEnergyEstimation:
+   if UseGasDataForHeatingEnergyEstimation or GetDataFrom == DataSource.FromCSVFileGasOnly:
       EnergyTypeString = "(Gas Based)"
    else:
       EnergyTypeString = "(Power Meter Based)"
-   if UseCSVFileAsDataSource:
+   if GetDataFrom == DataSource.FromCSVFile:
       AnalysesWindowString="Analysed File: "+CSVFile+" "
+   elif GetDataFrom == DataSource.FromCSVFileGasOnly:
+      AnalysesWindowString="Analysed File: "+CSVGasOnlyFile+" "
    else:
       StartString=DateStartAnalyses.strftime("%A %B %d %Y")
       StopString=DateEndAnalyses.strftime("%A %B %d %Y")
@@ -603,8 +756,18 @@ if not EstimateAdditionalInternalAndExternalEnergy:
    IndoorData = []
 
 # Get the data from Domoticz or csv file
-if UseCSVFileAsDataSource:
+if GetDataFrom == DataSource.FromCSVFile:
    OutdoorTempSamples, HeatingPowerSamples, IndoorTempSamples, ElectricitySamples = GetDataListsFromCSVFile()
+elif GetDataFrom == DataSource.FromCSVFileGasOnly:
+   GasDateSamples, GasEnergySamples = GetGasOnlyFromCSVFile()
+   KNMIDateSamples, KNMITempSamples = GetTemperaturesFromKNMI(GasDateSamples)
+   OutdoorTempSamples=[]
+   HeatingPowerSamples=[]
+   for KNMIDate, KNMITemp in zip (KNMIDateSamples, KNMITempSamples):
+      for GasDate, GasEnergy in zip (GasDateSamples, GasEnergySamples):
+         if KNMIDate == GasDate:
+            OutdoorTempSamples.append(KNMITemp)
+            HeatingPowerSamples.append(GasEnergy)
 else:
    OutdoorData = GetOutdoorTemp()
    if UseGasDataForHeatingEnergyEstimation:
